@@ -1,5 +1,7 @@
 #include "tim_app.h"
 
+extern TIM_HandleTypeDef htim2;
+
 /**
  * @brief 设置PWM占空比
  * 
@@ -18,31 +20,61 @@ void pwm_set_duty(float Duty)
  * 
  * 此函数用于设置TIM2的PWM频率。频率的单位为Hz。
  * 
- * @param Frequency 频率，单位为Hz。
+ * @param Frequency 频率，单位为Hz。 channel 为保留形参，具体看题目是否有多个通道需要修改。
  */
-void pwm_set_frequency(int Frequency)
+void pwm_set_frequency(int Frequency, uint8_t channel)
 {
-    // 获取定时器的时钟频率（假设TIM2使用的时钟频率为TIM2_CLK）
-    uint32_t TIM2_CLK = 72000000;  // 例如72MHz, 需要根据实际情况调整
-
-    // 根据输入的频率计算自动重装载寄存器的值
-    uint32_t ARR_Value = (TIM2_CLK / Frequency) - 1;
-
-    // 设置自动重装载寄存器
-    TIM2->ARR = ARR_Value;
-
-    // 更新捕获/比较寄存器CCR2，保持当前占空比不变
-    TIM2->CCR2 = (ARR_Value + 1) * (TIM2->CCR2 / (float)(TIM2->ARR + 1));
+//    uint32_t clk = HAL_RCC_GetPCLK2Freq();  // 获取PCLK2时钟频率
+//    if ((RCC->CFGR & RCC_CFGR_PPRE2) != RCC_CFGR_PPRE2_DIV1) {
+//        clk *= 2;
+//    }
     
-    // 触发更新事件，刷新寄存器
+    // 根据试题实际情况
+    uint32_t clk = 80 * 1000 * 1000;
+    
+    float duty = 0;
+    uint32_t prescaler = 1;
+    uint32_t arr;
+    
+    // 计算ARR和预分频器
+    arr = clk / (Frequency * prescaler) - 1;
+    
+    // 如果ARR超出范围，调整预分频器
+    if (arr > 65535) {
+        prescaler = (arr + 65535) / 65535;
+        arr = clk / (Frequency * prescaler) - 1;
+//        printf("Using prescaler = %d\r\n", prescaler);
+    }
+    
+    /* DEBUG */
+//    printf("Target Frequency = %d Hz\r\n", Frequency);
+//    printf("Clock = %d Hz\r\n", clk);
+//    printf("ARR = %d\r\n", arr);
+    
+    // 保存原占空比
+    duty = (float)TIM2->CCR1 / (TIM2->ARR + 1);
+//            printf("Original duty for channel 1 = %.3f\r\n", duty);
+    
+    // 设置新的预分频值和ARR
+    __HAL_TIM_SET_PRESCALER(&htim2, prescaler-1);
+    TIM2->ARR = arr;
+//            printf("New TIM16->ARR = %d\r\n", TIM16->ARR);
+    
+    // 保持占空比不变
+    TIM2->CCR1 = (TIM2->ARR + 1) * duty;
+//            printf("New TIM16->CCR1 = %d\r\n", TIM16->CCR1);
+    
+    // 更新寄存器
     TIM2->EGR = TIM_EGR_UG;
 }
 
+uint32_t tim3_ic_buffer[64];// 定义存储输入捕获值的缓冲区
+uint32_t tim3_ic_val = 0;// 最终计算得到的输入捕获值
+uint32_t tim3_ic_temp = 0;// 临时存储输入捕获计算的中间值
 
-
-uint32_t tim_ic_buffer[64];// 定义存储输入捕获值的缓冲区
-uint32_t tim_ic_val = 0;// 最终计算得到的输入捕获值
-uint32_t tim_ic_temp = 0;// 临时存储输入捕获计算的中间值
+uint32_t tim8_ic_buffer[64];// 定义存储输入捕获值的缓冲区
+uint32_t tim8_ic_val = 0;// 最终计算得到的输入捕获值
+uint32_t tim8_ic_temp = 0;// 临时存储输入捕获计算的中间值
 
 /**
  * @brief 处理输入捕获数据
@@ -53,21 +85,27 @@ uint32_t tim_ic_temp = 0;// 临时存储输入捕获计算的中间值
  */
 void ic_proc(void)
 {
-    tim_ic_temp = 0;
+    tim3_ic_temp = 0;
+    tim8_ic_temp = 0;
     
     // 对缓冲区中的捕获值求和
     for (int i = 0; i < 64; i++)
     {
-        tim_ic_temp += tim_ic_buffer[i];
+        tim3_ic_temp += tim3_ic_buffer[i];
+        tim8_ic_temp += tim8_ic_buffer[i];
     }
 
     // 计算平均值
-    tim_ic_temp /= 64;
-
+    tim3_ic_temp /= 64;
+    tim8_ic_temp /= 64;
+    
     // 计算频率值，单位为Hz
-    tim_ic_val = (int)((float)(1000.0f * 1000.0f) / (float)tim_ic_temp);
-
+    tim3_ic_val = (int)((float)(1000.0f * 1000.0f) / (float)tim3_ic_temp);
+    tim8_ic_val = (int)((float)(1000.0f * 1000.0f) / (float)tim8_ic_temp);
+    
     // 将计算得到的频率值限制在1到20000之间
-    limit_value(&tim_ic_val, 1, 500, 20000);
+    limit_value(&tim3_ic_val, 1, 500, 20000);
+    limit_value(&tim8_ic_val, 1, 500, 20000);
 }
+
 

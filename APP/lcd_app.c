@@ -27,11 +27,7 @@ void LcdSprintf(uint8_t Line, char *format,...)
     LCD_DisplayStringLine(Line,String);  // 在LCD的指定行显示格式化后的字符串
 }
 
-uint8_t count;
 void lcd_proc(void)
 {
 
-	LcdSprintf(Line0,"Test LCD App");
-    LcdSprintf(Line1,"Count: %d",count);
-    count++;
 }

@@ -30,7 +30,8 @@ extern uint32_t dma_buff[2][30];//DMA接收缓存
 extern float adc_value[2];//ADC采样值数组
 extern RTC_TimeTypeDef time;//定义时间结构体
 extern RTC_DateTypeDef date;//定义日期结构体
-extern uint32_t tim_ic_buffer[64];// 定义存储输入捕获值的缓冲区
+extern uint32_t tim3_ic_buffer[64];// 定义存储输入捕获值的缓冲区
+extern uint32_t tim8_ic_buffer[64];// 定义存储输入捕获值的缓冲区
 extern uint32_t tim_ic_val;// 最终计算得到的输入捕获值
 
 

@@ -4,7 +4,6 @@
 #include "bsp_system.h"
 void pwm_set_duty(float Duty);
 void ic_proc(void);
-void pwm_set_frequency(int Frequency);
+void pwm_set_frequency(int Frequency, uint8_t channel);
 void pwm_set_duty(float Duty);
-
 #endif
